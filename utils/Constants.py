@@ -1,4 +1,11 @@
 # Copyright (C) 2020 Claudio Marques - All Rights Reserved
+from sklearn import svm
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+
 dataset_path = "data/output/dataset{toReplace}.csv"
 dataset_path_final = "C:\\SmithMicro\\machineLearning\\data\\input\\BenignAndMaliciousDataset_LabelEncoded.csv"
 #dataset_path_final = "data/output/final/datasetFinal.csv"
@@ -82,5 +89,12 @@ MLAlgorithms = [{
 
 
 #####
-TRAIN_PATH = "C:\\SmithMicro\\machineLearning\data\\train-data\\"
-MODEL_OUTPUT_PATH = "C:\\SmithMicro\\machineLearning\data\\model\\"
+TRAIN_PATH = "C:\\Mestrado\\machine-learning\\data\\train-data\\"
+MODEL_OUTPUT_PATH = "C:\\Mestrado\\machine-learning\\data\\model\\"
+TABLES_OUTPUT_PATH = "C:\\Mestrado\\machine-learning\\data\\output\\"
+ML_ALGORITHMS = {"SVM": {'enable': False, 'model': svm.SVC(kernel='linear', cache_size=500), 'trained_model': None},
+                 "LR": {'enable': True, 'model': LogisticRegression(max_iter=500), 'trained_model': None},
+                 "LDA": {'enable': True, 'model': LinearDiscriminantAnalysis(), 'trained_model': None},
+                 "KNN": {'enable': False, 'model': KNeighborsClassifier(), 'trained_model': None},
+                 "CART": {'enable': True, 'model': DecisionTreeClassifier(), 'trained_model': None},
+                 "NB": {'enable': True, 'model': GaussianNB(), 'trained_model': None}}

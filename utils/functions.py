@@ -1,17 +1,22 @@
 import os
+from datetime import datetime
+
 import pandas as pd
 import numpy as np
 import pickle
 import time
 
-from sklearn import metrics
-from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn import metrics, model_selection
+from sklearn.metrics import make_scorer, accuracy_score, recall_score, f1_score
+from sklearn.model_selection import train_test_split, cross_val_score, cross_validate
 from tabulate import tabulate
 
 from utils import Constants
 
 # Table variables
 TABLE_HEADER = ["Algorithm", "N# Features", "Test Size", "Train Size", "Accuracy", "Precision", "Recall", "Time (sec)"]
+TABLE_HEADER_K_CROSS = ["Algorithm", "Test Mode", "N# Features", "Accuracy", "Precision",
+                        "Recall", "Time (sec)"]
 
 
 def read_data(path=None, fillna=True, normalization=True):
@@ -96,8 +101,9 @@ def load_models(ml_algorithms, suffix):
     return ml_algorithms
 
 
-def test_models(ml_algoritms, features_test, class_test):
+def single_test(ml_algoritms, features_test, class_test, filename):
     table_data = []
+
     for key, value in ml_algoritms.items():
         if value['enable']:
             print("\nTesting the " + str(key) + " model.")
@@ -119,19 +125,83 @@ def test_models(ml_algoritms, features_test, class_test):
             # Time to test
             print("Time(sec): " + str(end_time))
 
-            ##OTHER TEST
-            ##scores = cross_val_score(model, features_test, class_test, cv=10)
-            ##print("Cross Validation scores: " + str(scores))
-
             table_data.append([str(key), len(features_test.columns), len(features_test), 90000 - len(features_test),
                                metrics.accuracy_score(class_test, class_pred),
                                metrics.precision_score(class_test, class_pred),
                                metrics.recall_score(class_test, class_pred), str(end_time)])
-    print_results_table(table_data)
+
+    print_results_table([TABLE_HEADER], table_data, filename, features_test.columns)
 
 
-def print_results_table(table_data):
-    table = [TABLE_HEADER]
+def kcross_validation(ml_algoritms, filename, dataset, selected_features):
+    table_data_k_cross = []
+    if selected_features is None:
+        print("Please use the feature selection to select features before continue...")
+        return None
+
+    features = dataset[selected_features]
+    label = dataset['Class']
+
+    k = input("Please enter a integer to K value (ie: 10):")
+    try:
+        k = int(k)
+    except Exception as ex:
+        print("Invalid K value" + str(ex))
+        kcross_validation(ml_algoritms, filename, dataset, selected_features)
+
+    for key, value in ml_algoritms.items():
+        if value['enable']:
+            print("\nTesting the " + str(key) + " model.")
+            model = value['model']
+            ##Cross Validation
+            # TODO enviar todo o dataset
+            scoring = {'accuracy': make_scorer(accuracy_score),
+                       'precision': 'precision',
+                       'recall': make_scorer(recall_score),
+                       'f1': make_scorer(f1_score)}
+            kf = model_selection.KFold(n_splits=k, random_state=None)
+            start_time = time.clock()
+            result = cross_validate(model, features, label, cv=kf, scoring=scoring)
+            end_time = time.clock() - start_time
+            table_data_k_cross.append([str(key), str(k) + "-fold-cross-validation", len(features.columns),
+                                       result['test_accuracy'].mean(),
+                                       result['test_precision'].mean(),
+                                       result['test_recall'].mean(), str(end_time)])
+
+    if filename is None:
+        filename = input("Please insert the filename to save the table data: ")
+    print_results_table([TABLE_HEADER_K_CROSS], table_data_k_cross, filename, features.columns)
+
+
+def print_results_table(table_header, table_data, filename, features):
+    table = table_header
     for data in table_data:
         table.append(data)
     print(tabulate(table, headers='firstrow', tablefmt='fancy_grid'))
+    choice = input("Do you want to save the table to a file (Y|N)?")
+    if choice == "Y":
+        write_to_file(filename=filename, content=tabulate(table, headers='firstrow', tablefmt='fancy_grid'),
+                      features=features)
+
+
+def write_to_file(path=None, filename=None, content="", features=None):
+    if path is None:
+        path = Constants.TABLES_OUTPUT_PATH
+    if filename is None:
+        raise Exception("No filename found!")
+    now = datetime.now()
+    # dd/mm/YY H:M:S
+    dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+    separator = "-------------------------------------------------------------------------------------------------------------------"
+
+    with open(path + filename + ".txt", "a", encoding="utf-8") as f:
+        f.write('\n'
+                + separator
+                + '\n'
+                + "Features: "
+                + str(features)
+                + '\n'
+                + dt_string
+                + ':\n' + content)
+        f.close()
+    print("Content appended to file at " + path + filename + ".txt")

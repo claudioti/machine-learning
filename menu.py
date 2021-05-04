@@ -15,23 +15,16 @@ import pandas as pd
 
 # TEST AND TRAIN CONFIGS
 TEST_SIZE = 0.2
-SELECTED_FEATURES = ['SpecialCharRatio', 'VowelSequence', 'SubdomainNumber', 'SpecialCharSequence', 'HttpResponseCode',
-                     'VowelRatio', 'ConsoantRatio']
+SELECTED_FEATURES = None
 
 # ML/Model CONFIGS
-ML_ALGORITHMS = {"SVM": {'enable': False, 'model': svm.SVC(kernel='linear', cache_size=500), 'trained_model': None},
-                 "LR": {'enable': True, 'model': LogisticRegression(max_iter=500), 'trained_model': None},
-                 "LDA": {'enable': True, 'model': LinearDiscriminantAnalysis(), 'trained_model': None},
-                 "KNN": {'enable': True, 'model': KNeighborsClassifier(), 'trained_model': None},
-                 "CART": {'enable': True, 'model': DecisionTreeClassifier(), 'trained_model': None},
-                 "NB": {'enable': True, 'model': GaussianNB(), 'trained_model': None}}
+ML_ALGORITHMS = Constants.ML_ALGORITHMS
 # models.append(('SVM', svm.SVC()))
 # models.append(('LR', LogisticRegression()))
 # models.append(('LDA', LinearDiscriminantAnalysis()))
 # models.append(('KNN', KNeighborsClassifier()))
 # models.append(('CART', DecisionTreeClassifier()))
 # models.append(('NB', GaussianNB()))
-MODEL_OUTPUT_PATH = "C:\\SmithMicro\\machineLearning\data\\model\\"
 
 # Menu variables
 dataset = None
@@ -42,6 +35,7 @@ def menu():
     # Global variable
     global ML_ALGORITHMS
     global dataset
+    global SELECTED_FEATURES
     global features_train, features_test, class_train, class_test, load_data_filename
 
     print("************ML Train and Test**************")
@@ -55,6 +49,7 @@ def menu():
                       5: Save Models
                       6: Load Models
                       7: Test Models
+                      8: Feature Selection
                       0: Exit
 
                       Please enter your choice: """)
@@ -66,7 +61,7 @@ def menu():
         dataset = functions.read_data(path=None, fillna=True, normalization=True)
     elif choice == 2:
         # Create test and train data
-        submenus.menu_create_train_and_test_data(dataset)
+        submenus.menu_create_train_and_test_data(dataset, SELECTED_FEATURES)
     elif choice == 3:
         # Load test and train data
         features_train, features_test, class_train, class_test, load_data_filename = submenus.menu_load_train_and_test_data()
@@ -79,14 +74,19 @@ def menu():
             print("Please load test and train data first.")
             menu()
         # Save models
-        functions.save_models(ML_ALGORITHMS, MODEL_OUTPUT_PATH, load_data_filename)
+        functions.save_models(ML_ALGORITHMS, Constants.MODEL_OUTPUT_PATH, load_data_filename)
     elif choice == 6:
         # Load models
         ML_ALGORITHMS = submenus.menu_load_models(ML_ALGORITHMS)
-
     elif choice == 7:
         # Test models
-        functions.test_models(ML_ALGORITHMS, features_test=features_test, class_test=class_test)
+        submenus.menu_test_models(ML_ALGORITHMS, features_test=features_test, class_test=class_test, filename=load_data_filename, dataset=dataset, selected_features=SELECTED_FEATURES)
+    elif choice == 8:
+        # Feature Importance
+        if dataset is None:
+            print("Please read the dataset before continue.")
+            menu()
+        SELECTED_FEATURES = submenus.menu_feature_selection(dataset)
     else:
         print("You must only select a number from the menu")
         print("Please try again")
