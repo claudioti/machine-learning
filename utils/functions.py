@@ -9,6 +9,7 @@ import time
 from sklearn import metrics, model_selection
 from sklearn.metrics import make_scorer, accuracy_score, recall_score, f1_score
 from sklearn.model_selection import train_test_split, cross_val_score, cross_validate
+from sklearn.preprocessing import LabelEncoder
 from tabulate import tabulate
 
 from utils import Constants
@@ -16,7 +17,7 @@ from utils import Constants
 # Table variables
 TABLE_HEADER = ["Algorithm", "N# Features", "Test Size", "Train Size", "Accuracy", "Precision", "Recall", "Time (sec)"]
 TABLE_HEADER_K_CROSS = ["Algorithm", "Test Mode", "N# Features", "Accuracy", "Precision",
-                        "Recall", "Time (sec)"]
+                        "Recall", "F1 Score", "Time (sec)"]
 
 
 def read_data(path=None, fillna=True, normalization=True):
@@ -35,20 +36,30 @@ def read_data(path=None, fillna=True, normalization=True):
 
     if normalization:
         print("read_data: normalization True.")
-        df = get0and1FromDatatype(df, "int64", ["DomainLength", "NumericSequence", "IpSplit1", "IpSplit2", "IpSplit3",
-                                                "IpSplit4", "CountryCode", "RegisteredCountry", "CreationDate",
-                                                "LastUpdateDate",
-                                                "ASN", "HttpResponseCode", "RegisteredOrg", "SubdomainNumber",
-                                                "Entropy",
-                                                "EntropyOfSubDomains",
-                                                "StrangeCharacters", "TLD", "ConsoantSequence", "VowelSequence",
-                                                "SpecialCharSequence"])
+        df = label_encoding(df)
+        df = get_min_max(df)
+
+    if 'Domain' in df.columns and 'DNSRecordType' in df.columns:
+        print("Droping Domain and DNSRecordType column.")
+        df = df.drop(columns=['Domain', 'DNSRecordType'])
+
     return df
 
 
-def get0and1FromDatatype(df, datatype, columns):
+def label_encoding(df):
+    label_encoder = LabelEncoder()
+    columns = df.columns.tolist()
     for col in columns:
-        if df[col].dtype.name == datatype:
+        col_data_type = df.dtypes.__getitem__(col)
+        if col_data_type.char == "O" or col_data_type.name == "bool":
+            integer_encoded = label_encoder.fit_transform(df[col])
+            df[col] = integer_encoded
+    return df
+
+
+def get_min_max(df):
+    for col in df.columns:
+        if col != 'Class' and df[col].dtype.name in ["int64", "int32"]:
             df[col] = (df[col] - df[col].min()) / (df[col].max() - df[col].min())
     return df
 
@@ -84,6 +95,8 @@ def train_model_impl(model, features_train, class_train):
 
 
 def save_models(ml_algorithms, path, load_data_filename):
+    if load_data_filename is None:
+        load_data_filename = input("Please insert the prefix for the model name (ie: MyPrefix): ")
     for key, value in ml_algorithms.items():
         if value['enable']:
             save_model = input('Do you want to save the model ' + str(key) + ' (Y|N)?\n')
@@ -130,7 +143,7 @@ def single_test(ml_algoritms, features_test, class_test, filename):
                                metrics.precision_score(class_test, class_pred),
                                metrics.recall_score(class_test, class_pred), str(end_time)])
 
-    print_results_table([TABLE_HEADER], table_data, filename, features_test.columns)
+    print_results_table([TABLE_HEADER], table_data, features_test.columns)
 
 
 def kcross_validation(ml_algoritms, filename, dataset, selected_features):
@@ -153,33 +166,34 @@ def kcross_validation(ml_algoritms, filename, dataset, selected_features):
         if value['enable']:
             print("\nTesting the " + str(key) + " model.")
             model = value['model']
-            ##Cross Validation
-            # TODO enviar todo o dataset
             scoring = {'accuracy': make_scorer(accuracy_score),
                        'precision': 'precision',
                        'recall': make_scorer(recall_score),
                        'f1': make_scorer(f1_score)}
             kf = model_selection.KFold(n_splits=k, random_state=None)
-            start_time = time.clock()
             result = cross_validate(model, features, label, cv=kf, scoring=scoring)
-            end_time = time.clock() - start_time
-            table_data_k_cross.append([str(key), str(k) + "-fold-cross-validation", len(features.columns),
+            table_data_k_cross.append([str(key),
+                                       str(k) + "-fold-cross-validation",
+                                       len(features.columns),
                                        result['test_accuracy'].mean(),
                                        result['test_precision'].mean(),
-                                       result['test_recall'].mean(), str(end_time)])
+                                       result['test_recall'].mean(),
+                                       result['test_f1'].mean(),
+                                       result['score_time'].mean()])
+            value['model'] = model
 
-    if filename is None:
-        filename = input("Please insert the filename to save the table data: ")
-    print_results_table([TABLE_HEADER_K_CROSS], table_data_k_cross, filename, features.columns)
+    print_results_table([TABLE_HEADER_K_CROSS], table_data_k_cross, features.columns)
+    return ml_algoritms
 
 
-def print_results_table(table_header, table_data, filename, features):
+def print_results_table(table_header, table_data, features):
     table = table_header
     for data in table_data:
         table.append(data)
     print(tabulate(table, headers='firstrow', tablefmt='fancy_grid'))
     choice = input("Do you want to save the table to a file (Y|N)?")
     if choice == "Y":
+        filename = input("Please insert the filename to save the table data: ")
         write_to_file(filename=filename, content=tabulate(table, headers='firstrow', tablefmt='fancy_grid'),
                       features=features)
 
@@ -202,6 +216,7 @@ def write_to_file(path=None, filename=None, content="", features=None):
                 + str(features)
                 + '\n'
                 + dt_string
-                + ':\n' + content)
+                + ':\n'
+                + content)
         f.close()
     print("Content appended to file at " + path + filename + ".txt")

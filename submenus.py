@@ -1,6 +1,10 @@
 from pandas import np
 from sklearn.ensemble import ExtraTreesClassifier
-from sklearn.feature_selection import SelectKBest, chi2
+from sklearn.feature_selection import SelectKBest, chi2, RFECV
+from sklearn.linear_model import SGDClassifier
+from sklearn.model_selection import StratifiedKFold
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeRegressor
 
 from utils import functions, Constants
 from ast import literal_eval
@@ -55,53 +59,57 @@ def menu_load_models(ml_algorithms):
 
 
 def menu_feature_selection(dataset):
-    X = dataset[[
-        "IpSplit1", "IpSplit2", "IpSplit3", "IpSplit4", "MXDnsResponse", "TXTDnsResponse", "HasSPFInfo", "HasDkimInfo",
-        "HasDmarcInfo", "DomainInAlexaDB", "CommonPorts", "CountryCode", "RegisteredCountry", "CreationDate",
-        "LastUpdateDate", "ASN", "HttpResponseCode", "RegisteredOrg", "SubdomainNumber", "Entropy",
-        "EntropyOfSubDomains", "StrangeCharacters", "TLD", "IpReputation", "DomainReputation", "ConsoantRatio",
-        "NumericRatio", "SpecialCharRatio", "VowelRatio", "ConsoantSequence", "VowelSequence", "NumericSequence",
-        "SpecialCharSequence", "DomainLength"]]  # independent columns
+    X = dataset.iloc[:,:-1] # independent columns
     y = dataset["Class"]  # target column
 
     def univariate_selection():
-        # apply SelectKBest class to extract top 10 best features
-        bestfeatures = SelectKBest(score_func=chi2, k=10)
+        bestfeatures = SelectKBest(score_func=chi2, k=feature_number)
         fit = bestfeatures.fit(X, y)
         dfscores = pd.DataFrame(fit.scores_)
         dfcolumns = pd.DataFrame(X.columns)
-        # concat two dataframes for better visualization
         featureScores = pd.concat([dfcolumns, dfscores], axis=1)
-        featureScores.columns = ['Features', 'Score']  # naming the dataframe columns
-        print(featureScores.nlargest(10, 'Score'))
-        print(str(featureScores.nlargest(10, 'Score').Features.values))
-        return featureScores.nlargest(10, 'Score').Features.values
+        featureScores.columns = ['Features', 'Score']
+        return featureScores.nlargest(feature_number, 'Score').Features.values
 
     def feature_importance():
         model = ExtraTreesClassifier()
         model.fit(X, y)
-        # print(model.feature_importances_)  # use inbuilt class feature_importances of tree based classifiers
-        # plot graph of feature importances for better visualization
         feat_importances = pd.Series(model.feature_importances_, index=X.columns)
-        feat_importances.nlargest(10).plot(kind='barh')
-        # plt.show()
-        print(str(feat_importances.nlargest(10).axes[0].values))
-        return feat_importances.nlargest(10).axes[0].values
+        return feat_importances.nlargest(feature_number).axes[0].values
+
+    def rfe_cross_validation():
+        rfecv = RFECV(estimator=DecisionTreeRegressor(), step=1, scoring="neg_mean_squared_error",
+                      cv=StratifiedKFold(10), verbose=1,
+                      min_features_to_select=31,
+                      n_jobs=4)
+        rfecv.fit(X, y)
+        rfecv.transform(X)
+        dset = pd.DataFrame()
+        dset['attr'] = X.columns
+        dset['importance'] = rfecv.estimator_.feature_importances_
+        dset = dset.sort_values(by='importance', ascending=False)
+        return dset.attr.head(feature_number).values
 
     print()
     choice = input(""" Select the method to the feature selection:
-                      1: Univariate Selection
-                      2: Feature Importance
+                      1: Univariate Selection (chi2)
+                      2: Feature Importance (Extras Trees Classifier)
+                      3: RFE (Recursive feature elimination with cross-validation)
                       0: Main Menu
 
                       Please enter your choice: """)
     choice = int(choice)
+    if choice != 0:
+        feature_number = input("How many features to be selected (ie:10)? ")
+        feature_number = int(feature_number)
     if choice == 0:
         return None
     elif choice == 1:
         return univariate_selection()
     elif choice == 2:
         return feature_importance()
+    elif choice == 3:
+        return rfe_cross_validation()
     else:
         print("You must only select a number from the menu")
         print("Please try again")
@@ -122,7 +130,7 @@ def menu_test_models(ML_ALGORITHMS, features_test, class_test, filename, dataset
         functions.single_test(ML_ALGORITHMS, features_test, class_test, filename)
         menu_test_models(ML_ALGORITHMS, features_test, class_test, filename, dataset, selected_features)
     elif choice == 2:
-        functions.kcross_validation(ML_ALGORITHMS, filename, dataset, selected_features)
+        return functions.kcross_validation(ML_ALGORITHMS, filename, dataset, selected_features)
         menu_test_models(ML_ALGORITHMS, features_test, class_test, filename, dataset, selected_features)
     else:
         print("You must only select a number from the menu")

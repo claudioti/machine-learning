@@ -58,7 +58,7 @@ def menu():
         exit(0)
     elif choice == 1:
         # Read dataset
-        dataset = functions.read_data(path=None, fillna=True, normalization=True)
+        dataset = functions.read_data(path=None, fillna=False, normalization=False)
     elif choice == 2:
         # Create test and train data
         submenus.menu_create_train_and_test_data(dataset, SELECTED_FEATURES)
@@ -70,9 +70,9 @@ def menu():
         ML_ALGORITHMS = functions.train_model(ml_algorithms=ML_ALGORITHMS, features_train=features_train,
                                               class_train=class_train)
     elif choice == 5:
-        if load_data_filename is None:
-            print("Please load test and train data first.")
-            menu()
+        # if load_data_filename is None:
+        #     print("Please load test and train data first.")
+        #     menu()
         # Save models
         functions.save_models(ML_ALGORITHMS, Constants.MODEL_OUTPUT_PATH, load_data_filename)
     elif choice == 6:
@@ -80,7 +80,7 @@ def menu():
         ML_ALGORITHMS = submenus.menu_load_models(ML_ALGORITHMS)
     elif choice == 7:
         # Test models
-        submenus.menu_test_models(ML_ALGORITHMS, features_test=features_test, class_test=class_test, filename=load_data_filename, dataset=dataset, selected_features=SELECTED_FEATURES)
+        ML_ALGORITHMS = submenus.menu_test_models(ML_ALGORITHMS, features_test=features_test, class_test=class_test, filename=load_data_filename, dataset=dataset, selected_features=SELECTED_FEATURES)
     elif choice == 8:
         # Feature Importance
         if dataset is None:

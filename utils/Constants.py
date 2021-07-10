@@ -7,35 +7,8 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 
 dataset_path = "data/output/dataset{toReplace}.csv"
-dataset_path_final = "C:\\SmithMicro\\machineLearning\\data\\input\\BenignAndMaliciousDataset_LabelEncoded.csv"
-#dataset_path_final = "data/output/final/datasetFinal.csv"
-# log_path = "data/logs/output.log"
-log_path = "data/logs/output_append.log"
-numberOfThreads = 45
+dataset_path_final = "C:\\Mestrado\\machine-learning\\data\\input\\BenignAndMaliciousDataset_LabelEncoded_Normalized.csv"
 
-inputFileMalign = "data/input/malign/all.log"
-outputFileMalign = "data/output/fileMalign.csv"
-# sampleMalign = 500 #8500
-sampleMalign = 0
-
-inputFileBenignAAAA = "C:\\Mestrado\\python-trab-final\\data\\input\\benign\\aaaa\\all.log"
-outputFileBenignAAA = "data/output/fileBenignAAAA.csv"
-sampleAAAA = 45
-# sampleAAAA = 1
-
-inputFileBenignCNAME = "C:\\Mestrado\\python-trab-final\\data\\input\\benign\\cname\\all.log.2"
-outputFileBenignCNAME = "data/output/fileBenignCNAME.csv"
-sampleCNAME = 0
-# sampleCNAME = 1
-
-inputFileBenignMX = "C:\\Mestrado\\python-trab-final\\data\\input\\benign\\mx\\all.log"
-outputFileBenignMX = "data/output/fileBenignMX.csv"
-sampleMX = 0
-# sampleMX = 1
-
-alexaDbPath = "C:\\Mestrado\\python-trab-final\\utils\\Database\\AlexaDB\\top-1m.csv"
-
-ports = [80, 443, 21, 22, 23, 25, 53, 110, 143, 161, 445, 465, 587, 993, 995, 3306, 3389, 7547, 8080, 8888]
 
 fileHeader = "Domain,MXDnsResponse,TXTDnsResponse,HasSPFInfo,HasDkimInfo,HasDmarcInfo,Ip,DomainInAlexaDB,CommonPorts,CountryCode,RegisteredCountry,CreationDate," \
              "LastUpdateDate,ASN,HttpResponseCode,RegisteredOrg,SubdomainNumber,Entropy,EntropyOfSubDomains,StrangeCharacters," \
@@ -92,9 +65,10 @@ MLAlgorithms = [{
 TRAIN_PATH = "C:\\Mestrado\\machine-learning\\data\\train-data\\"
 MODEL_OUTPUT_PATH = "C:\\Mestrado\\machine-learning\\data\\model\\"
 TABLES_OUTPUT_PATH = "C:\\Mestrado\\machine-learning\\data\\output\\"
-ML_ALGORITHMS = {"SVM": {'enable': False, 'model': svm.SVC(kernel='linear', cache_size=500), 'trained_model': None},
+ML_ALGORITHMS = {"SVM": {'enable': True, 'model': svm.SVC(kernel='linear', cache_size=500), 'trained_model': None},
                  "LR": {'enable': True, 'model': LogisticRegression(max_iter=500), 'trained_model': None},
                  "LDA": {'enable': True, 'model': LinearDiscriminantAnalysis(), 'trained_model': None},
-                 "KNN": {'enable': False, 'model': KNeighborsClassifier(), 'trained_model': None},
+                 "KNN": {'enable': True, 'model': KNeighborsClassifier(), 'trained_model': None},
                  "CART": {'enable': True, 'model': DecisionTreeClassifier(), 'trained_model': None},
-                 "NB": {'enable': True, 'model': GaussianNB(), 'trained_model': None}}
+                 "NB": {'enable': True, 'model': GaussianNB(), 'trained_model': None},
+                 "AutoML-CART": {'enable': False, 'model': DecisionTreeClassifier(criterion="gini", max_depth=9, min_samples_leaf=6, min_samples_split=13), 'trained_model': None}}
