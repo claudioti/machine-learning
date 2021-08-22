@@ -1,4 +1,5 @@
 import time
+from operator import itemgetter
 
 import numpy as np
 import pandas as pd
@@ -49,7 +50,7 @@ scoring = {'accuracy': make_scorer(accuracy_score),
 #     'NumericRatio', 'ASN', 'DomainLength', 'NumericSequence', 'Ip', 'ConsoantRatio', 'TLD', 'StrangeCharacters', 'CountryCode']]
 
 kf = model_selection.KFold(n_splits=10, random_state=None)
-result = cross_validate(exported_pipeline, features, label, cv=kf, scoring=scoring)
+result = cross_validate(exported_pipeline, features, label, cv=kf, scoring=scoring, return_estimator=True)
 print()
 print("Cross Validation")
 print("Accuracy: %f" % result['test_accuracy'].mean())
@@ -57,3 +58,22 @@ print("Precision: %f" % result['test_precision'].mean())
 print("Recall: %f" % result['test_recall'].mean())
 print("F1 Score: %f" % result['test_f1'].mean())
 print("Time (sec): %f" % result['score_time'].mean())
+
+meanFeatureValues = {}
+
+for idx, estimator in enumerate(result['estimator']):
+    print("Features sorted by their score for estimator {}:".format(idx))
+    feature_importances = pd.DataFrame(estimator.steps[0][1].estimator.feature_importances_,
+                                       index=features.columns,
+                                       columns=['importance']).sort_values('importance', ascending=False)
+    for index, row in feature_importances.iterrows():
+        if index not in meanFeatureValues:
+            meanFeatureValues[index] = row.importance
+        else:
+            meanFeatureValues[index] = meanFeatureValues[index] + row.importance
+    print(feature_importances)
+
+print()
+meanFeatureValues = dict(sorted(meanFeatureValues.items(), key=lambda x: x[1], reverse=True))
+for feature in meanFeatureValues:
+    print("%s: %s" % (feature, str('{:.10f}'.format(meanFeatureValues[feature] / 10))))
